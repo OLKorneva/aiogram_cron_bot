@@ -24,17 +24,17 @@ async def send_notification(bot: Bot, user_id: int):
     """
     user_data = await get_user_data(user_id)
     if user_data:
-        days_left = user_data[0]
-        if days_left > 0:
-            day = 16 - days_left  # Номер текущего дня (1–15)
+        days_left = user_data.get("days_left", None)
+        if days_left is not None and days_left > 0:
+            day = 17 - days_left  # Номер текущего дня (1–15)
             audio_path = os.path.join("app", "audio", f"day{day}.mp3")
             try:
                 if not os.path.exists(audio_path):
                     logging.error(f"Аудиофайл {audio_path} не найден")
-                    await bot.send_message(user_id, MESSAGES[day])  # Отправляем только текст
+                    await bot.send_message(user_id, MESSAGES.get(day, ''))  # Отправляем только текст
                     return
                 with open(audio_path, "rb") as audio_file:
-                    await bot.send_audio(user_id, audio=audio_file, caption=MESSAGES[day])
+                    await bot.send_audio(user_id, audio=audio_file, caption=MESSAGES.get(day, ''))
                 await update_user_days_left(user_id, days_left - 1)
                 logging.info(f"Уведомление отправлено пользователю {user_id}, день {day}, осталось дней: {days_left - 1}")
                 if days_left == 1:  # После последнего уведомления

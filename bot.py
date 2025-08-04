@@ -17,8 +17,8 @@ from app.scheduler import scheduler, restore_scheduled_jobs
 from app.database import init_db
 
 # Настройка логирования
-#logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", filename="bot.log", encoding="utf-8")
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+#logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", filename="bot.log", encoding="utf-8")
 
 
 async def main() -> None:

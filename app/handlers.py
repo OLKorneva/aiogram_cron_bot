@@ -2,33 +2,33 @@
 Модуль с обработчиками команд и сообщений для Telegram-бота.
 Обрабатывает команду /start, выбор времени и ответы на четыре вопроса.
 """
-import aiosqlite
+import aiohttp
 import asyncio
 from aiogram import Router
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import logging
-import aiohttp
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+
 from app.keyboards import get_time_keyboard
-from app.messages import MESSAGES
+from app.messages import MESSAGES, START_DAY
 from app.filters import TimeFilter
 from app.scheduler import schedule_notification, send_notification, scheduler
 from app.database import save_user_data, get_user_data
 import app.keyboards as kb
+from app.utils import get_tomorrow_day, get_formated_day
 
 router = Router()
 
 
 # FSM для сбора ответов
 class UserForm(StatesGroup):
+    waiting_for_question_name = State()
+    waiting_for_question_goal = State()
+    waiting_for_question_screen_time = State()
     waiting_for_time = State()
-    waiting_for_question1 = State()
-    waiting_for_question2 = State()
-    waiting_for_question3 = State()
-    waiting_for_question4 = State()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
@@ -41,11 +41,67 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         state: Контекст FSM для управления состоянием.
     """
     logging.info(f"Получена команда /start от пользователя {message.from_user.id}")
-    user_name = message.from_user.last_name or message.from_user.first_name or ""
-    await message.answer(
-        text=MESSAGES["start"].format(user_name),
-        reply_markup=get_time_keyboard()
+    photo = FSInputFile("app/images/start.jpg")
+    await message.answer_photo(photo=photo, caption=MESSAGES["start"])
+    audio = FSInputFile("app/audio/day2.mp3", filename='День_тестовый.mp3')
+    await message.answer_audio(
+        audio=audio,
+        caption="Тестовое аудио"
     )
+    await message.answer(text=MESSAGES["question_name"])
+    await state.set_state(UserForm.waiting_for_question_name)
+
+@router.message(UserForm.waiting_for_question_name)
+async def process_question_name(message: Message, state: FSMContext) -> None:
+    """
+    Обработчик ответа на первый вопрос.
+    Сохраняет ответ и запрашивает второй вопрос.
+
+    Args:
+        message: Входящее сообщение с ответом.
+        state: Контекст FSM для хранения данных.
+    """
+    await state.update_data(user_name=message.text.strip())
+    await message.answer(MESSAGES["question_goal"])
+    await state.set_state(UserForm.waiting_for_question_goal)
+
+@router.message(UserForm.waiting_for_question_goal)
+async def process_question_goal(message: Message, state: FSMContext) -> None:
+    """
+    Обработчик ответа на второй вопрос.
+    Сохраняет ответ и запрашивает третий вопрос.
+
+    Args:
+        message: Входящее сообщение с ответом.
+        state: Контекст FSM для хранения данных.
+    """
+    await state.update_data(goal=message.text)
+    await message.answer(MESSAGES["question_screen_time"], reply_markup=kb.get_screen_time_keyboard())
+    await state.set_state(UserForm.waiting_for_question_screen_time)
+
+@router.callback_query(TimeFilter(kb.screen_time), UserForm.waiting_for_question_screen_time)
+async def process_question_screen_time(callback: CallbackQuery, state: FSMContext) -> None:
+    """
+    Обработчик ответа на третий вопрос.
+    Сохраняет ответ и запрашивает четвёртый вопрос.
+
+    Args:
+        message: Входящее сообщение с ответом.
+        state: Контекст FSM для хранения данных.
+    """
+    await state.update_data(screen_time=callback.data)
+    data = await state.get_data()
+    user_name = data["user_name"]
+    try:
+        await callback.message.edit_text(
+            MESSAGES["confirm_screen_time"].format(callback.data), reply_markup=None)
+    except Exception as e:
+        logging.error(f"Ошибка при редактировании сообщения: {e}")
+        await callback.message.answer(MESSAGES["confirm_screen_time"].format(callback.data))
+
+    await callback.message.answer(
+            MESSAGES["question_time"].format(user_name),
+        reply_markup=kb.get_time_keyboard())
     await state.set_state(UserForm.waiting_for_time)
 
 @router.callback_query(TimeFilter(kb.times), UserForm.waiting_for_time)
@@ -59,105 +115,38 @@ async def set_time(callback: CallbackQuery, state: FSMContext) -> None:
         state: Контекст FSM для хранения данных.
     """
     selected_time = callback.data
-    logging.info(f"Пользователь {callback.from_user.id} выбрал время {selected_time}")
-    await state.update_data(selected_time=selected_time)
-    try:
-        await callback.message.edit_text(
-            MESSAGES["selected"].format(selected_time),
-            reply_markup=None
-        )
-    except Exception as e:
-        logging.error(f"Ошибка при редактировании сообщения: {e}")
-        await callback.message.answer(MESSAGES["selected"].format(selected_time))
-    await callback.message.answer(MESSAGES["question1"])
-    await state.set_state(UserForm.waiting_for_question1)
-    await callback.answer(f"Вы выбрали {selected_time}")
+    user_id = callback.from_user.id
+    logging.info(f"Пользователь {user_id} выбрал время {selected_time}")
 
-    # Объединяем ответы в одно сообщение, чтобы сократить API-запросы
-    # try:
-    #     await callback.message.answer(
-    #         f"{MESSAGES['selected'].format(selected_time)}\n{MESSAGES['question1']}"
-    #     )
-    #     await callback.message.delete()  # Удаляем сообщение с клавиатурой
-    #     await callback.answer(f"Вы выбрали {selected_time}")
-    #     await state.set_state(UserForm.waiting_for_question1)
-    # except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-    #     logging.error(f"Ошибка отправки сообщения в set_time: {e}")
-    #     await callback.message.answer("Произошла сетевая ошибка. Пожалуйста, попробуйте снова.")
-    #     await callback.answer("Ошибка сети")
-
-@router.message(UserForm.waiting_for_question1)
-async def process_question1(message: Message, state: FSMContext) -> None:
-    """
-    Обработчик ответа на первый вопрос.
-    Сохраняет ответ и запрашивает второй вопрос.
-
-    Args:
-        message: Входящее сообщение с ответом.
-        state: Контекст FSM для хранения данных.
-    """
-    await state.update_data(answer1=message.text)
-    await message.answer(MESSAGES["question2"])
-    await state.set_state(UserForm.waiting_for_question2)
-
-@router.message(UserForm.waiting_for_question2)
-async def process_question2(message: Message, state: FSMContext) -> None:
-    """
-    Обработчик ответа на второй вопрос.
-    Сохраняет ответ и запрашивает третий вопрос.
-
-    Args:
-        message: Входящее сообщение с ответом.
-        state: Контекст FSM для хранения данных.
-    """
-    await state.update_data(answer2=message.text)
-    await message.answer(MESSAGES["question3"])
-    await state.set_state(UserForm.waiting_for_question3)
-
-@router.message(UserForm.waiting_for_question3)
-async def process_question3(message: Message, state: FSMContext) -> None:
-    """
-    Обработчик ответа на третий вопрос.
-    Сохраняет ответ и запрашивает четвёртый вопрос.
-
-    Args:
-        message: Входящее сообщение с ответом.
-        state: Контекст FSM для хранения данных.
-    """
-    await state.update_data(answer3=message.text)
-    await message.answer(MESSAGES["question4"])
-    await state.set_state(UserForm.waiting_for_question4)
-
-@router.message(UserForm.waiting_for_question4)
-async def process_question4(message: Message, state: FSMContext) -> None:
-    """
-    Обработчик ответа на четвёртый вопрос.
-    Сохраняет все данные в базу, планирует уведомления и завершает опрос.
-
-    Args:
-        message: Входящее сообщение с ответом.
-        state: Контекст FSM для хранения данных.
-    """
-    user_id = message.from_user.id
+    # Получаем данные из state
     data = await state.get_data()
-    selected_time = data["selected_time"]
-    answer1 = data["answer1"]
-    answer2 = data["answer2"]
-    answer3 = data["answer3"]
-    answer4 = message.text
-    start_date = datetime.now().date() + timedelta(days=1)
-    days_left = 15
+    user_name = data.get("user_name")
+    goal = data.get("goal", "")  # Предполагаемые ответы, замените на ваши
+    screen_time = data.get("screen_time", "")
+    start_date = START_DAY
+    days_left = 16
 
     # Сохранение данных в базу
-    await save_user_data(user_id, selected_time, answer1, answer2, answer3, answer4, str(start_date), days_left)
+    await save_user_data(user_id, user_name, selected_time, goal, screen_time, start_date, days_left)
 
     # Планирование уведомлений
-    await schedule_notification(message.bot, user_id, selected_time)
+    await schedule_notification(callback.bot, user_id, selected_time)
 
-    await message.answer(MESSAGES["saved"])
+    try:
+        await callback.message.edit_text(
+            MESSAGES["selected"].format(get_formated_day(start_date), selected_time),
+            reply_markup=None)
+    except Exception as e:
+        logging.error(f"Ошибка при редактировании сообщения: {e}")
+        await callback.message.answer(MESSAGES["selected"].format(get_formated_day(start_date), selected_time))
+    await callback.answer(f'Вы выбрали {callback.data}')
+
+    # Очистка состояния
     await state.clear()
-    logging.info(f"Пользователь {user_id} завершил опрос: время={selected_time}, ответы=({answer1}, {answer2}, {answer3}, {answer4})")
+    logging.info(f"Пользователь {user_id} завершил опрос: время={selected_time}, ответы=({user_name}, {goal}, {screen_time}, {selected_time})")
 
+    # Подтверждение callback
+    await callback.answer(f"Вы выбрали {selected_time}")
 
 @router.message(Command("debug"))
 async def cmd_debug(message: Message) -> None:
@@ -171,36 +160,33 @@ async def cmd_debug(message: Message) -> None:
     user_id = message.from_user.id
     data = await get_user_data(user_id)
     if data:
-        async with aiosqlite.connect("bot.db") as conn:
-            cursor = await conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-            user_data = await cursor.fetchone()
         try:
-            response = f"Данные пользователя: {user_data}"
+            response = f"Данные пользователя: {data}"
         except UnicodeEncodeError:
-            response = f"Данные пользователя: {tuple(str(item).encode('utf-8', errors='replace').decode('utf-8') for item in user_data)}"
+            response = f"Данные пользователя: {tuple(str(item).encode('utf-8', errors='replace').decode('utf-8') for item in data)}"
         await message.answer(response)
     else:
         await message.answer("Вы не зарегистрированы в марафоне!")
 
-@router.message(Command("send_now"))
-async def cmd_send_now(message: Message) -> None:
-    """
-    Временный хендлер для отладки.
-    Отправляет тестовое уведомление немедленно.
-
-    Args:
-        message: Входящее сообщение.
-    """
-    user_id = message.from_user.id
-    if await get_user_data(user_id):
-        try:
-            await send_notification(message.bot, user_id)
-            await message.answer("Тестовое уведомление отправлено!")
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            logging.error(f"Ошибка отправки тестового уведомления: {e}")
-            await message.answer("Произошла сетевая ошибка при отправке уведомления.")
-    else:
-        await message.answer("Вы не зарегистрированы в марафоне!")
+# @router.message(Command("send_now"))
+# async def cmd_send_now(message: Message) -> None:
+#     """
+#     Временный хендлер для отладки.
+#     Отправляет тестовое уведомление немедленно.
+#
+#     Args:
+#         message: Входящее сообщение.
+#     """
+#     user_id = message.from_user.id
+#     if await get_user_data(user_id):
+#         try:
+#             await send_notification(message.bot, user_id)
+#             await message.answer("Тестовое уведомление отправлено!")
+#         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+#             logging.error(f"Ошибка отправки тестового уведомления: {e}")
+#             await message.answer("Произошла сетевая ошибка при отправке уведомления.")
+#     else:
+#         await message.answer("Вы не зарегистрированы в марафоне!")
 
 @router.message(Command("list_jobs"))
 async def cmd_list_jobs(message: Message) -> None:
