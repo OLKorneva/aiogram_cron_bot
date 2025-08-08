@@ -12,12 +12,15 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from app.handlers import router
+from app.handlers.main_dialogue import router as main_router
+from app.handlers.test_dialogue import router as test_router
+from app.handlers.questions import router as questions_router
 from app.scheduler import scheduler, restore_scheduled_jobs
 from app.database import init_db
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 #logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", filename="bot.log", encoding="utf-8")
 
 
@@ -33,7 +36,9 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher()
-    dp.include_router(router)
+    dp.include_router(main_router)
+    dp.include_router(test_router)
+    dp.include_router(questions_router)
 
     # Инициализация базы данных
     await init_db()

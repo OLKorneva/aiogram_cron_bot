@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import math
 
 month_names = {
         "January": "января",
@@ -44,3 +45,34 @@ def get_formated_day(date: str) -> str | None:
     if month and 1 <= int(day) <= 31:
         return day.lstrip('0') + ' ' + month
     return None
+
+
+
+def format_text_to_width(text, width_px):
+    """Форматирует текст с сохранением пустых строк и переносов"""
+    # Рассчитываем примерное количество символов в строке
+    chars_per_line = max(40, math.floor(width_px / 15))  # Не менее 40 символов
+
+    result = []
+    for paragraph in text.split('\n'):
+        if not paragraph.strip():  # Сохраняем пустые строки
+            result.append('')
+            continue
+
+        words = paragraph.split()
+        current_line = []
+
+        for word in words:
+            # Проверяем, помещается ли слово в текущую строку
+            line_length = sum(len(w) for w in current_line) + len(current_line)  # + пробелы
+            if line_length + len(word) <= chars_per_line:
+                current_line.append(word)
+            else:
+                result.append(' '.join(current_line))
+                current_line = [word]
+
+        if current_line:
+            result.append(' '.join(current_line))
+
+    return '\n'.join(result)
+
