@@ -2,7 +2,7 @@ from aiogram.filters import BaseFilter
 from aiogram.types import CallbackQuery
 
 
-class TimeFilter(BaseFilter):
+class KeyFilter(BaseFilter):
     def __init__(self, times: list[str]):
         self.times = times
 
