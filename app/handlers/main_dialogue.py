@@ -13,7 +13,7 @@ import logging
 from os import getenv
 from dotenv import load_dotenv
 
-from app.messages import MESSAGES, START_DAY, dialogue_messages, questions
+from app.messages import MESSAGES, START_DAY, dialogue_messages, questions, confirms
 from app.filters import KeyFilter
 #from app.scheduler import scheduler, schedule_single_messages, schedule_tasks
 from app.database import save_user_data, get_user_data, save_final_answer
@@ -83,7 +83,7 @@ async def process_question_screen_time(callback: CallbackQuery, state: FSMContex
 
         try:
             await callback.message.edit_text(
-                questions.get('confirm_screen_time').format(screen_time_text),
+                confirms.get('screen_time').format(screen_time_text),
                 reply_markup=None
             )
         except Exception as e:
@@ -101,14 +101,16 @@ async def process_question_screen_time(callback: CallbackQuery, state: FSMContex
 @router.callback_query(KeyFilter(kb.focuses), UserForm.waiting_for_question_focus)
 async def process_question_focus(callback: CallbackQuery, state: FSMContext) -> None:
     try:
-        # Исправлено: используем callback.data вместо callback.text
         await state.update_data(focus=callback.data)
+        focus_text = kb.get_text_by_id(callback.data, kb.focus_options, kb.focus_ids)
+        try:
+            await callback.message.edit_text(
+                confirms.get('focus').format(focus_text), reply_markup=None)
+        except Exception as e:
+            logging.error(f"Ошибка при редактировании сообщения пользователя {callback.from_user.id} об экранном времени: {e}")
+            await callback.message.answer(questions.get('confirm_screen_time').format(callback.data))
 
-        # Получаем текст варианта по ID
-        focus_text = kb.focus_options[kb.focus_ids.index(callback.data.split('_')[1])]
-
-        # Исправлено: используем callback.message.answer вместо callback.answer
-        await callback.message.answer(questions.get('changes'),reply_markup=None)
+        await callback.message.answer(questions.get('changes'), reply_markup=None)
         await state.set_state(UserForm.waiting_for_question_changes)
         logging.info(f"Обработан фокус пользователя {callback.from_user.id}: {callback.data}")
 
@@ -176,14 +178,14 @@ async def set_time(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None
     # await schedule_single_messages(callback.bot, user_id)
     # await schedule_tasks(callback.bot, user_id, selected_time, start_date)
 
-    # try:
-    #     await callback.message.edit_text(
-    #         MESSAGES["selected"].format(get_formated_day(start_date), selected_time),
-    #         reply_markup=None)
-    # except Exception as e:
-    #     logging.error(f"Ошибка при редактировании сообщения: {e}")
-    #     await callback.message.answer(MESSAGES["selected"])
-    # await callback.answer(f'Вы выбрали {callback.data}')
+    try:
+        await callback.message.edit_text(
+            confirms.get('time').format(kb.get_text_by_id(selected_time, kb.times, kb.time_ids)),
+            reply_markup=None)
+    except Exception as e:
+        logging.error(f"Ошибка при редактировании сообщения: {e}")
+        await callback.message.answer(MESSAGES["selected"])
+    await callback.answer(f'Вы выбрали {callback.data}')
 
 
     await bot.forward_message(
