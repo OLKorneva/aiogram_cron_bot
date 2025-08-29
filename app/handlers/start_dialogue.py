@@ -3,53 +3,49 @@
 Обрабатывает команду /start, выбор времени и ответы на четыре вопроса.
 """
 
-import os
-from aiogram import Router, Bot
+from aiogram import Router, Bot, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery, FSInputFile, MessageEntity
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
+
 import logging
 from os import getenv
 from dotenv import load_dotenv
 
-from app.messages import MESSAGES, START_DAY, dialogue_messages, questions, confirms
+from app.messages import START_DAY, dialogue_messages, questions, confirms, CHANNEL_ID
 from app.filters import KeyFilter
-#from app.scheduler import scheduler, schedule_single_messages, schedule_tasks
-from app.database import save_user_data, get_user_data, save_final_answer
+from app.scheduler import scheduler, schedule_tasks, schedule_single_messages
+from app.database import save_user_data
 import app.keyboards as kb
-from app.utils import get_formated_day
+from app.utils.audio import send_audio_challenge
+from app.utils.form import UserForm
 
 router = Router()
 load_dotenv()
-CHANNEL_ID = getenv("SOURCE_CHAT_ID")
 
-# FSM для сбора ответов
-class UserForm(StatesGroup):
-    waiting_for_question_name = State()
-    waiting_for_question_screen_time = State()
-    waiting_for_question_focus = State()
-    waiting_for_question_changes = State()
-    waiting_for_time = State()
 
-    waiting_for_after_screen_time = State()
-    waiting_for_after_focus = State()
-    waiting_for_after_changes = State()
 
-    waiting_for_is_useful = State()
-    waiting_for_whats_new = State()
-    waiting_for_whats_changed = State()
 
-# # FSM для сбора ответов
-# class FinalQuestions(StatesGroup):
-#     waiting_for_is_useful = State()
-#     waiting_for_whats_new = State()
-#     waiting_for_whats_changed = State()
+
+
+@router.message(F.audio)
+async def get_file_id(msg: Message):
+    await msg.answer(f"file_id: {msg.audio.file_id}")
 
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, bot: Bot, state: FSMContext) -> None:
-    logging.info(f"Получена команда /start от пользователя {message.from_user.id} c именем {message.from_user.first_name}")
+    user_id = message.from_user.id
+    logging.info(f"Получена команда /start от пользователя {user_id} c именем {message.from_user.first_name}")
+
+    # Направление первого аудио
+    await send_audio_challenge(
+        bot=bot,
+        user_id=user_id,
+        key='about'
+    )
+
+    # Направление первого сообщения
     try:
         await bot.forward_message(
             chat_id=message.from_user.id,
@@ -58,9 +54,10 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext) -> None:
         )
         await message.answer(text=questions.get('name'))
         await state.set_state(UserForm.waiting_for_question_name)
+        logging.info(f"Пользователю {message.from_user.id} направлено первое сообщение")
     except Exception as e:
         logging.error(f"Ошибка пересылки пользователю {message.from_user.id} первого сообщения: {e} ")
-    logging.info(f"Пользователю {message.from_user.id} направлено первое сообщение")
+
 
 @router.message(UserForm.waiting_for_question_name)
 async def process_question_name(message: Message, state: FSMContext) -> None:
@@ -118,29 +115,6 @@ async def process_question_focus(callback: CallbackQuery, state: FSMContext) -> 
         logging.error(f"Ошибка при обработке фокуса пользователя {callback.from_user.id}: {e}")
         await callback.message.answer("Произошла ошибка. Попробуйте еще раз.")
 
-# @router.callback_query(KeyFilter(kb.screen_time), UserForm.waiting_for_question_screen_time)
-# async def process_question_screen_time(callback: CallbackQuery, state: FSMContext) -> None:
-#     await state.update_data(screen_time=callback.data)
-#     try:
-#         await callback.message.edit_text(
-#             questions.get('confirm_screen_time').format(callback.data), reply_markup=None)
-#     except Exception as e:
-#         logging.error(f"Ошибка при редактировании сообщения пользователя {callback.from_user.id} об экранном времени: {e}")
-#         await callback.message.answer(questions.get('confirm_screen_time').format(callback.data))
-#
-#     await callback.message.answer(text=questions.get('focus'), reply_markup=kb.get_focuses_keyboard())
-#     await state.set_state(UserForm.waiting_for_question_focus)
-#     logging.info(f"Обработано экранное время, введенное пользователем {callback.from_user.id}")
-#
-# @router.callback_query(KeyFilter(kb.focuses), UserForm.waiting_for_question_focus)
-# async def process_question_focus(callback: CallbackQuery, state: FSMContext) -> None:
-#     try:
-#         await state.update_data(focus=callback.text.strip())
-#         await callback.answer(questions.get('changes'), reply_markup=kb.get_changes_keyboard())
-#         await state.set_state(UserForm.waiting_for_question_changes)
-#     except Exception as e:
-#         logging.error(f"Ошибка при обработке сообщения пользователя {callback.from_user.id} о фокусе: {e}")
-
 @router.message(UserForm.waiting_for_question_changes)
 async def process_question_changes(message: Message, bot: Bot, state: FSMContext) -> None:
     try:
@@ -175,8 +149,8 @@ async def set_time(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None
     await save_user_data(user_id, days_left, user_name, screen_time, focus, changes, selected_time, start_date)
 
     # Планирование уведомлений
-    # await schedule_single_messages(callback.bot, user_id)
-    # await schedule_tasks(callback.bot, user_id, selected_time, start_date)
+    await schedule_single_messages(callback.bot, user_id)
+    await schedule_tasks(callback.bot, user_id, selected_time, start_date)
 
     try:
         await callback.message.edit_text(

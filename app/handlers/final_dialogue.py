@@ -6,29 +6,40 @@ from aiogram.fsm.state import State, StatesGroup
 import logging
 
 from app.filters import KeyFilter
-from app.handlers.main_dialogue import UserForm, CHANNEL_ID
-from app.messages import MESSAGES, dialogue_messages, questions, confirms
+from app.handlers.start_dialogue import CHANNEL_ID
+from app.messages import dialogue_messages, questions, confirms
 from app.database import save_final_answer, get_user_data
 from aiogram.filters import Command
 import app.keyboards as kb
+from app.scheduler import run_final_questions
+from app.utils.audio import send_audio_challenge
+from app.utils.form import UserForm
 
 router = Router()
 
 
+
+
 @router.message(Command("final"))
 async def final_questions(message: Message, bot: Bot, state: FSMContext):
-    try:
-        await bot.forward_message(
-            chat_id=message.from_user.id,
-            from_chat_id=CHANNEL_ID,
-            message_id=dialogue_messages.get('final_questions_start', {}).get('forward_key')
-        )
-        await message.answer(questions.get('after_screen_time'), reply_markup=kb.get_screen_time_keyboard())
-        await state.set_state(UserForm.waiting_for_after_screen_time)
+    await run_final_questions(bot, message.from_user.id, state)
 
-    except Exception as e:
-        logging.error(f"Ошибка пересылки пользователю {message.from_user.id} сообщения с финальными вопросами: {e} ")
-    logging.info(f"Начат финальный опрос пользователя {message.from_user.id}")
+
+
+# @router.message(Command("final"))
+# async def final_questions(message: Message, bot: Bot, state: FSMContext):
+#     try:
+#         await bot.forward_message(
+#             chat_id=message.from_user.id,
+#             from_chat_id=CHANNEL_ID,
+#             message_id=dialogue_messages.get('final_questions_start', {}).get('forward_key')
+#         )
+#         await message.answer(questions.get('after_screen_time'), reply_markup=kb.get_screen_time_keyboard())
+#         await state.set_state(UserForm.waiting_for_after_screen_time)
+#
+#     except Exception as e:
+#         logging.error(f"Ошибка пересылки пользователю {message.from_user.id} сообщения с финальными вопросами: {e} ")
+#     logging.info(f"Начат финальный опрос пользователя {message.from_user.id}")
 
 @router.callback_query(KeyFilter(kb.screen_time), UserForm.waiting_for_after_screen_time)
 async def process_after_screen_time(callback: CallbackQuery, state: FSMContext) -> None:
@@ -138,3 +149,21 @@ async def process_question_whats_changed(callback: CallbackQuery, state: FSMCont
         logging.error(f"Ошибка сохранения финальных ответов пользователя {user_id}: {e}")
     finally:
         await state.clear()
+
+@router.message(Command("last"))
+async def thanks(message: Message, bot: Bot):
+    await send_audio_challenge(
+        bot=bot,
+        user_id=message.from_user.id,
+        key='thanks'
+    )
+    try:
+        await bot.forward_message(
+            chat_id=message.from_user.id,
+            from_chat_id=CHANNEL_ID,
+            message_id=dialogue_messages.get('thanks', {}).get('forward_key')
+        )
+
+    except Exception as e:
+        logging.error(f"Ошибка пересылки пользователю {message.from_user.id} сообщения с финальными вопросами: {e} ")
+    logging.info(f"Начат финальный опрос пользователя {message.from_user.id}")

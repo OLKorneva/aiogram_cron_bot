@@ -4,6 +4,8 @@
 """
 import asyncio
 from os import getenv
+import os
+import json
 import sys
 import logging
 from dotenv import load_dotenv
@@ -12,10 +14,11 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from app.handlers.main_dialogue import router as main_router
-#from app.handlers.test_dialogue import router as test_router
-from app.handlers.questions import router as questions_router
-#from app.scheduler import scheduler, restore_scheduled_jobs
+from app.cash.cash import load_cache
+from app.handlers.start_dialogue import router as start_router
+from app.handlers.test_dialogue import router as test_router
+from app.handlers.final_dialogue import router as final_router
+from app.scheduler import scheduler, restore_scheduled_jobs
 from app.database import init_db
 
 # Настройка логирования
@@ -35,27 +38,31 @@ async def main() -> None:
         token=getenv("BOT_TOKEN"),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
+
+    # --- Загрузка кеша аудио ---
+    load_cache()
+
     dp = Dispatcher()
-    dp.include_router(main_router)
-#    dp.include_router(test_router)
-    dp.include_router(questions_router)
+    dp.include_router(start_router)
+    dp.include_router(final_router)
+    dp.include_router(test_router)
 
     # Инициализация базы данных
     await init_db()
 
     # Восстановление запланированных задач
-    #await restore_scheduled_jobs(bot)
+    await restore_scheduled_jobs(bot)
 
     # Запуск планировщика
-    #scheduler.start()
-    #logging.info("Планировщик запущен")
+    scheduler.start()
+    logging.info("Планировщик запущен")
 
     try:
         await dp.start_polling(bot)
     finally:
         await dp.storage.close()
         await bot.session.close()
-        #scheduler.shutdown()
+        scheduler.shutdown()
         logging.info("Бот остановлен")
 
 if __name__ == "__main__":
