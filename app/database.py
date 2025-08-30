@@ -11,42 +11,49 @@ async def init_db():
                 screen_time TEXT,
                 focus TEXT,
                 changes TEXT,
-                selected_time TEXT,
+                feedback TEXT,
                 after_screen_time TEXT,
                 after_focus TEXT,
-                start_date TEXT,
-                days_left INTEGER,
                 is_useful TEXT,
                 whats_new TEXT,
-                whats_changed TEXT
+                whats_changed TEXT,
+                else_challenge TEXT,
+                topics TEXT
             );
         ''')
         await conn.commit()
     logging.info("База данных инициализирована")
 
 async def save_user_data(user_id: int,
-                         days_left: int,
                          user_name: Optional[str] = None,
                          screen_time: Optional[str] = None,
                          focus: Optional[str] = None,
-                         changes: Optional[str] = None,
-                         selected_time: Optional[str] = None,
-                         start_date: Optional[str] = None):
+                         changes: Optional[str] = None):
     async with aiosqlite.connect("bot.db") as conn:
         await conn.execute('''
             INSERT OR REPLACE INTO users 
-            (user_id, user_name, screen_time, focus, changes, selected_time, start_date, days_left)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (user_id, user_name, screen_time, focus, changes, selected_time, start_date, days_left))
+            (user_id, user_name, screen_time, focus, changes)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (user_id, user_name, screen_time, focus, changes))
         await conn.commit()
     logging.info(f"Данные пользователя {user_id} сохранены")
+
+async def save_feedback(user_id: int, feedback: str):
+    async with aiosqlite.connect("bot.db") as conn:
+        if feedback is not None:
+            await conn.execute(f"UPDATE users SET feedback = ? WHERE user_id = ?", (feedback, user_id))
+            await conn.commit()
+            logging.info(f"Отзыв пользователя {user_id} сохранен")
 
 async def save_final_answer(user_id: int,
                             after_screen_time: Optional[str] = None,
                             after_focus: Optional[str] = None,
                             is_useful: Optional[str] = None,
                             whats_new: Optional[str] = None,
-                            whats_changed: Optional[str] = None):
+                            whats_changed: Optional[str] = None,
+                            else_challenge: Optional[str] = None,
+                            topics: Optional[str] = None,
+                            ):
     async with aiosqlite.connect("bot.db") as conn:
         # Обновляем только те поля, которые переданы (не None)
         update_fields = []
@@ -55,19 +62,30 @@ async def save_final_answer(user_id: int,
         if after_screen_time is not None:
             update_fields.append("after_screen_time = ?")
             params.append(after_screen_time)
-        if after_screen_time is not None:
+
+        if after_focus is not None:
             update_fields.append("after_focus = ?")
             params.append(after_focus)
 
         if is_useful is not None:
             update_fields.append("is_useful = ?")
             params.append(is_useful)
+
         if whats_new is not None:
             update_fields.append("whats_new = ?")
             params.append(whats_new)
+
         if whats_changed is not None:
             update_fields.append("whats_changed = ?")
             params.append(whats_changed)
+
+        if else_challenge is not None:
+            update_fields.append("else_challenge = ?")
+            params.append(else_challenge)
+
+        if topics is not None:
+            update_fields.append("topics = ?")
+            params.append(topics)
 
         if update_fields:
             params.append(user_id)
@@ -87,22 +105,16 @@ async def get_user_data(user_id: int) -> Optional[Dict[str, Any]]:
                 "screen_time": result[2],
                 "focus": result[3],
                 "changes": result[4],
-                "selected_time": result[5],
-                "goal": result[6],
-                "after_screen_time": result[7],
-                "after_focus": result[8],
-                "start_date": result[9],
-                "days_left": result[10],
-                "is_useful": result[11],
-                "whats_new": result[12],
-                "whats_changed": result[13]
+                "feedback": result[5],
+                "after_screen_time": result[6],
+                "after_focus": result[7],
+                "is_useful": result[8],
+                "whats_new": result[9],
+                "whats_changed": result[10],
+                "else_challenge": result[11],
+                "topics": result[12],
             }
         return None
-
-async def update_user_days_left(user_id: int, days_left: int):
-    async with aiosqlite.connect("bot.db") as conn:
-        await conn.execute("UPDATE users SET days_left = ? WHERE user_id = ?", (days_left, user_id))
-        await conn.commit()
 
 async def delete_user(user_id: int):
     async with aiosqlite.connect("bot.db") as conn:
@@ -112,5 +124,15 @@ async def delete_user(user_id: int):
 
 async def get_active_users():
     async with aiosqlite.connect("bot.db") as conn:
-        cursor = await conn.execute("SELECT user_id, selected_time FROM users WHERE days_left > 0")
-        return await cursor.fetchall()
+        cursor = await conn.execute("SELECT user_id FROM users")
+        results = await cursor.fetchall()
+        # Извлекаем только user_id из кортежей
+        return [user_id for (user_id,) in results]
+
+async def get_name(user_id: int) -> str | None:
+    async with aiosqlite.connect("bot.db") as conn:
+        cursor = await conn.execute(
+            "SELECT user_name FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
