@@ -1,19 +1,27 @@
 from os import getenv
+from io import BytesIO
+import openpyxl
+import logging
 
 from aiogram.filters import Command, BaseFilter
 from aiogram.types import Message
-from aiogram import Router, F, Bot
+from aiogram import Router, Bot, types, F
 from aiogram.fsm.context import FSMContext
+from aiogram.types import BufferedInputFile
+
 
 from app.messages import timetable_single_messages
 from app.scheduler import scheduler, send_single_message_safe, run_final_questions, run_middle_question
-from app.database import get_user_data, get_active_users
-
+from app.database import get_user_data, get_active_users, get_all_users_data
 
 # ======================
 # Фильтр только для админа
 # ======================
 ADMIN_ID = int(getenv("ADMIN_ID", 0))
+EXPORT_USER_IDS = {int(getenv("ADMIN_ID", 0)), int(getenv("OWNER_ID", 0))}
+
+def is_export_allowed(user_id: int) -> bool:
+    return user_id in EXPORT_USER_IDS
 
 
 class IsAdmin(BaseFilter):
@@ -101,15 +109,76 @@ async def cmd_list_jobs(message: Message) -> None:
         await message.answer("Нет запланированных задач.")
 
 
+@admin_router.message(Command("export"))
+async def export_users_handler(message: types.Message):
+    if not is_export_allowed(message.from_user.id):
+        await message.answer("У вас нет доступа к экспорту пользователей.")
+        return
+
+    try:
+        # Создаем Excel
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Users"
+
+        # Заголовки столбцов
+        headers = [
+            "user_id", "user_name", "screen_time", "focus", "changes",
+            "feedback", "after_screen_time", "after_focus", "is_useful",
+            "whats_new", "whats_changed", "else_challenge", "topics"
+        ]
+        ws.append(headers)
+
+        # Заполняем строки
+        users_data = await get_all_users_data()
+        for data in users_data:
+            row = [data.get(col) for col in headers]
+            ws.append(row)
+
+        # Сохраняем в BytesIO
+        file_stream = BytesIO()
+        wb.save(file_stream)
+        file_stream.seek(0)
+
+        excel_file = BufferedInputFile(file_stream.read(), filename="users_data.xlsx")
+
+        await message.answer_document(excel_file)
+        logging.info("Файл с пользователями отправлен.")
+
+    except Exception as e:
+        logging.error(f"Ошибка при экспорте пользователей: {e}")
+        await message.answer("Произошла ошибка при экспорте пользователей.")
+
+@admin_router.message(F.text == "/getid")
+async def cmd_getid(message: Message):
+    if message.reply_to_message:  # Если команда дана в ответ на пересланное сообщение
+        fwd = message.reply_to_message
+
+        if fwd.forward_from:  # Сообщение от пользователя
+            await message.answer(
+                f"👤 Пользователь:\n"
+                f"Имя: {fwd.forward_from.full_name}\n"
+                f"ID: {fwd.forward_from.id}"
+            )
+        elif fwd.forward_from_chat:  # Сообщение из канала/чата
+            await message.answer(
+                f"📢 Канал/чат:\n"
+                f"Название: {fwd.forward_from_chat.title}\n"
+                f"ID: {fwd.forward_from_chat.id}"
+            )
+        else:
+            await message.answer("⚠️ В пересланном сообщении нет ID (у пользователя скрыта пересылка).")
+    else:
+        # Если команда без ответа, просто вернём id того, кто написал
+        await message.answer(f"Твой ID: {message.from_user.id}")
+
 # @admin_router.message(F.audio)
 # async def get_file_id(msg: Message):
 #     await msg.answer(f"file_id: {msg.audio.file_id}")
-#
+
 # @admin_router.message()
 # async def get_file_id(msg: Message):
 #     await msg.answer(f"file_id: {msg.message_id}")
-
-
 
 # @router.message(Command("final"))
 # async def final_questions(message: Message, bot: Bot, state: FSMContext):

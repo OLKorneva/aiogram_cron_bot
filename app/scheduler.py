@@ -14,6 +14,7 @@ from app.database import get_active_users, get_name
 from app.messages import CHANNEL_ID, timetable_single_messages, questions
 import app.keyboards as kb
 from app.utils.form import UserForm
+from app.utils.retry import retry_async
 
 # --- Настройка scheduler и semaphore ---
 scheduler = AsyncIOScheduler()
@@ -27,13 +28,19 @@ async def send_single_message_safe(bot: Bot, user_id: int, date_time: Dict):
         await asyncio.sleep(random.uniform(0.2, 0.5))  # небольшой рандом
         message_key = date_time.get("message_key")
         forward_key = date_time.get("forward_key")
+
         try:
             if forward_key:
-                await bot.forward_message(
-                    chat_id=user_id,
-                    from_chat_id=CHANNEL_ID,
-                    message_id=forward_key
-                )
+
+                async def forward_single_message():
+                    await bot.forward_message(
+                        chat_id=user_id,
+                        from_chat_id=CHANNEL_ID,
+                        message_id=forward_key
+                    )
+                # Ретрай пересылки сообщения
+                await retry_async(forward_single_message)
+
                 logging.info(f"Сообщение {message_key} отправлено пользователю {user_id}")
             else:
                 logging.error(f"forward_key в {date_time} не найден, сообщение не отправлено пользователю {user_id}")
@@ -124,10 +131,10 @@ async def add_new_user_to_schedule(bot: Bot, user_id: int, dp):
     logging.info(f"Новый пользователь {user_id} добавлен в рассылку")
 
 
-# проверка нормальной работы с бд: ин мемори? как нормально? почему при перезапуске и начале опроса предыдущие данные о финальных ответах потерялис?
-#запретить повторный ввод по нажатию старт
+#запретить повторный ввод по нажатию старт (или нет?)
 # ревью ии-шками
 # тесты
-# сделать чтобы не падала, если стартовых ответов нет, а задаются финальные
+# перенастроить логирование
+
 # выбор места размещения
 # размещение

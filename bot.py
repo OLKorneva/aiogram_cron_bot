@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-import aiosqlite
-import json
 import logging
-from typing import Any, Dict, Optional
-from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
+from aiogram.client.default import DefaultBotProperties
+from aiogram.exceptions import TelegramNetworkError
+from aiohttp.client_exceptions import ClientConnectorError, ClientConnectorDNSError
+from aiogram.client.session.aiohttp import AiohttpSession
 
 from app.handlers.start_dialogue import router as start_router
 from app.handlers.admin import admin_router
@@ -17,6 +17,7 @@ from app.handlers.final_dialogue import router as final_router
 from app.scheduler import scheduler, restore_scheduled_jobs
 from app.database import init_db
 from app.utils.context import bot_var, dp_var
+from app.utils.storage import SQLiteStorage
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -24,77 +25,22 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
 
-class SQLiteStorage(BaseStorage):
-    def __init__(self, db_path="bot.db"):
-        self.db_path = db_path
+RETRY_EXC = (TelegramNetworkError, ClientConnectorError, ClientConnectorDNSError, asyncio.TimeoutError, OSError)
 
-    def _key_to_string(self, key: StorageKey) -> str:
-        return f"{key.chat_id}:{key.user_id}"
-
-    def _state_to_string(self, state: Optional[StateType]) -> Optional[str]:
-        if state is None:
-            return None
-        return state.state if hasattr(state, "state") else str(state)
-
-    async def set_state(self, key: StorageKey, state: Optional[StateType]) -> None:
-        key_str = self._key_to_string(key)
-        state_str = self._state_to_string(state)
-        async with aiosqlite.connect(self.db_path) as conn:
-            # сохраняем state, но не затираем data
-            await conn.execute(
-                """
-                INSERT INTO fsm_storage (key, state, data)
-                VALUES (?, ?, COALESCE((SELECT data FROM fsm_storage WHERE key = ?), '{}'))
-                ON CONFLICT(key) DO UPDATE SET state=excluded.state
-                """,
-                (key_str, state_str, key_str),
-            )
-            await conn.commit()
-        logging.debug(f"State set for {key_str}: {state_str}")
-
-    async def get_state(self, key: StorageKey) -> Optional[str]:
-        key_str = self._key_to_string(key)
-        async with aiosqlite.connect(self.db_path) as conn:
-            cursor = await conn.execute("SELECT state FROM fsm_storage WHERE key=?", (key_str,))
-            row = await cursor.fetchone()
-            return row[0] if row else None
-
-    async def set_data(self, key: StorageKey, data: Dict[str, Any]) -> None:
-        key_str = self._key_to_string(key)
-        async with aiosqlite.connect(self.db_path) as conn:
-            await conn.execute(
-                """
-                INSERT INTO fsm_storage (key, state, data)
-                VALUES (?, COALESCE((SELECT state FROM fsm_storage WHERE key = ?), NULL), ?)
-                ON CONFLICT(key) DO UPDATE SET data=excluded.data
-                """,
-                (key_str, key_str, json.dumps(data)),
-            )
-            await conn.commit()
-        logging.debug(f"Data set for {key_str}: {data}")
-
-    async def get_data(self, key: StorageKey) -> Dict[str, Any]:
-        key_str = self._key_to_string(key)
-        async with aiosqlite.connect(self.db_path) as conn:
-            cursor = await conn.execute("SELECT data FROM fsm_storage WHERE key=?", (key_str,))
-            row = await cursor.fetchone()
-            if row and row[0]:
-                try:
-                    return json.loads(row[0])
-                except json.JSONDecodeError:
-                    return {}
-            return {}
-
-    async def delete_state(self, key: StorageKey) -> None:
-        key_str = self._key_to_string(key)
-        async with aiosqlite.connect(self.db_path) as conn:
-            await conn.execute("DELETE FROM fsm_storage WHERE key=?", (key_str,))
-            await conn.commit()
-        logging.debug(f"State deleted for {key_str}")
-
-    async def close(self) -> None:
-        pass
-
+async def run_polling_forever(bot: Bot, dp: Dispatcher):
+    backoff = 2
+    while True:
+        try:
+            await dp.start_polling(bot)
+            # если вышли без исключений — значит нас остановили корректно
+            break
+        except RETRY_EXC as e:
+            logging.warning(f"Polling network error: {e}. Retry in {backoff}s")
+            await asyncio.sleep(min(backoff, 30))
+            backoff = min(backoff * 2, 30)
+        except Exception:
+            logging.exception("Fatal error in polling. Stopping.")
+            break
 
 async def main() -> None:
     """
@@ -102,8 +48,10 @@ async def main() -> None:
     Инициализирует базу данных, восстанавливает задачи планировщика и запускает бота.
     """
     load_dotenv()
+    session = AiohttpSession()
     bot = Bot(
         token=getenv("BOT_TOKEN"),
+        session=session,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
@@ -121,21 +69,29 @@ async def main() -> None:
     # Инициализация базы данных
     await init_db()
 
+    # Запуск планировщика
+    if not scheduler.running:
+        scheduler.configure(
+            job_defaults={
+                "coalesce": True,          # слить пропущенные срабатывания в одно
+                "max_instances": 1,        # не плодить конкурентные отправки
+                "misfire_grace_time": 300  # обработать триггер, если опоздали до 5 минут
+            }
+        )
+        scheduler.start()
+        logging.info("Планировщик запущен")
+
     # Восстановление запланированных задач
     await restore_scheduled_jobs(bot, dp)
 
-    # Запуск планировщика
-    if not scheduler.running:
-        scheduler.start()
-        logging.info("Scheduler запущен")
-    logging.info("Планировщик запущен")
-
     try:
-        await dp.start_polling(bot)
+        await run_polling_forever(bot, dp)
     finally:
+        # Завершаем аккуратно только при реальном выходе
         await dp.storage.close()
         await bot.session.close()
-        scheduler.shutdown()
+        if scheduler.running:
+            scheduler.shutdown()
         logging.info("Бот остановлен")
 
 if __name__ == "__main__":

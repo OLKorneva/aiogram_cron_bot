@@ -139,7 +139,10 @@ async def process_question_else_challenge(callback: CallbackQuery, state: FSMCon
             await callback.message.answer(confirms.get('save_final_result'))
             await state.clear()
         else:
-            await callback.message.answer(questions.get('topics'))
+            try:
+                await callback.message.edit_text(questions.get('topics'), reply_markup=None)
+            except Exception:
+                await callback.message.answer(questions.get('topics'), reply_markup=None)
             await state.set_state(UserForm.waiting_for_topics)
 
     except Exception as e:
