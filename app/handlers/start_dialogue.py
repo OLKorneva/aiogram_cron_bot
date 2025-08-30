@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from app.messages import dialogue_messages, questions, confirms, CHANNEL_ID
 from app.filters import KeyFilter
-from app.scheduler import schedule_single_messages
+from app.scheduler import schedule_single_messages, add_new_user_to_schedule
 from app.database import save_user_data, get_name
 import app.keyboards as kb
 from app.utils.context import dp_var
@@ -119,7 +119,8 @@ async def process_question_changes(message: Message, state: FSMContext) -> None:
         logging.info(f"Обработаны данные о желаемых изменениях, введенные пользователем {message.from_user.id}")
 
         # Планирование уведомлений
-        await schedule_single_messages(message.bot, user_id, dp_var.get())
+        await add_new_user_to_schedule(message.bot, user_id, dp_var.get())
+
 
 
     except Exception as e:

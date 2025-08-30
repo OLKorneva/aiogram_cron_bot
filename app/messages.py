@@ -2,10 +2,6 @@ from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
-
-URL_MEETING_1 = "https://youandpartners.ru/"
-URL_MEETING_2 = "https://youandpartners.ru/"
-URL_MEETING_3 = "https://youandpartners.ru/"
 CHANNEL_ID = getenv("SOURCE_CHAT_ID")
 
 
@@ -58,51 +54,51 @@ confirms = {
 
 timetable_single_messages =[
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"13"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"24"},
         "message_key": "first_meeting_invite",
         'forward_key': 100
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"14"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"25"},
         "message_key": "first_meeting_1_remind",
         'forward_key': 102
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"15"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"25"},
         "message_key": "first_meeting_2_remind",
         'forward_key': 103
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"16"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"26"},
         "message_key": "first_meeting_record",
         'forward_key': 104
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"17"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"30"},
         "message_key": "content",
         'forward_key': 105
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"18"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"27"},
         "message_key": "middle_meeting_invite",
         'forward_key': 106
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"19"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"28"},
         "message_key": "middle_meeting_record",
         'forward_key': 107
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"20"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"29"},
         "message_key": "final_meeting_invite",
         'forward_key': 109
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"21"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"26"},
         "message_key": "feedback",
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"29", "hour":"17", "minute":"22"},
+        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"31"},
         "message_key": "final",
         'forward_key': 113
     }

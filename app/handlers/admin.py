@@ -6,7 +6,7 @@ from aiogram import Router, F, Bot
 from aiogram.fsm.context import FSMContext
 
 from app.messages import timetable_single_messages
-from app.scheduler import scheduler, send_single_message, run_final_questions, run_middle_question
+from app.scheduler import scheduler, send_single_message_safe, run_final_questions, run_middle_question
 from app.database import get_user_data, get_active_users
 
 
@@ -86,7 +86,7 @@ async def cmd_all_single_messages(message: Message) -> None:
             message_key = date_time.get("message_key")
             if message_key in ['final', 'middle']:
                 continue
-            await send_single_message(bot=message.bot, user_id=message.from_user.id, date_time=date_time)
+            await send_single_message_safe(bot=message.bot, user_id=message.from_user.id, date_time=date_time)
     else:
         await message.answer("Вы не зарегистрированы в челлендже, пройдите регистрацию /start!")
 

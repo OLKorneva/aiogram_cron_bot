@@ -1,17 +1,16 @@
 import asyncio
 from os import getenv
-import os
-import json
 import sys
-import logging
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.base import BaseStorage, StateType
 import aiosqlite
+import json
+import logging
+from typing import Any, Dict, Optional
+from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
 
-from app.cash.cash import load_cache
 from app.handlers.start_dialogue import router as start_router
 from app.handlers.admin import admin_router
 from app.handlers.final_dialogue import router as final_router
@@ -23,12 +22,6 @@ from app.utils.context import bot_var, dp_var
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 #logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", filename="bot.log", encoding="utf-8")
 logging.getLogger('apscheduler').setLevel(logging.DEBUG)
-
-import aiosqlite
-import json
-import logging
-from typing import Any, Dict, Optional
-from aiogram.fsm.storage.base import BaseStorage, StorageKey, StateType
 
 
 class SQLiteStorage(BaseStorage):
@@ -114,9 +107,6 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
-    # --- Загрузка кеша аудио ---
-    load_cache()
-
     # Инициализация SQLiteStorage
     storage = SQLiteStorage(db_path="bot.db")
     dp = Dispatcher(storage=storage)
@@ -135,7 +125,9 @@ async def main() -> None:
     await restore_scheduled_jobs(bot, dp)
 
     # Запуск планировщика
-    scheduler.start()
+    if not scheduler.running:
+        scheduler.start()
+        logging.info("Scheduler запущен")
     logging.info("Планировщик запущен")
 
     try:
@@ -152,76 +144,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Бот выключен.")
 
-
-# """
-# Основной файл для запуска Telegram-бота.
-# Инициализирует бота, базу данных и планировщик, а также запускает обработку сообщений.
-# """
-# import asyncio
-# from os import getenv
-# import os
-# import json
-# import sys
-# import logging
-# from dotenv import load_dotenv
-#
-# from aiogram import Bot, Dispatcher
-# from aiogram.client.default import DefaultBotProperties
-# from aiogram.enums import ParseMode
-#
-# from app.cash.cash import load_cache
-# from app.handlers.start_dialogue import router as start_router
-# from app.handlers.admin import admin_router
-# from app.handlers.final_dialogue import router as final_router
-# from app.scheduler import scheduler, restore_scheduled_jobs
-# from app.database import init_db
-#
-# # Настройка логирования
-# logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-# logging.getLogger('apscheduler').setLevel(logging.DEBUG)
-# #logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", filename="bot.log", encoding="utf-8")
-#
-#
-# async def main() -> None:
-#     """
-#     Основная функция для запуска бота.
-#     Инициализирует базу данных, восстанавливает задачи планировщика и запускает бота.
-#     """
-#
-#     load_dotenv()
-#     bot = Bot(
-#         token=getenv("BOT_TOKEN"),
-#         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-#     )
-#
-#     # --- Загрузка кеша аудио ---
-#     load_cache()
-#
-#     dp = Dispatcher()
-#     dp.include_router(start_router)
-#     dp.include_router(final_router)
-#     dp.include_router(admin_router)
-#
-#     # Инициализация базы данных
-#     await init_db()
-#
-#     # Восстановление запланированных задач
-#     await restore_scheduled_jobs(bot, dp)
-#
-#     # Запуск планировщика
-#     scheduler.start()
-#     logging.info("Планировщик запущен")
-#
-#     try:
-#         await dp.start_polling(bot)
-#     finally:
-#         await dp.storage.close()
-#         await bot.session.close()
-#         scheduler.shutdown()
-#         logging.info("Бот остановлен")
-#
-# if __name__ == "__main__":
-#     try:
-#         asyncio.run(main())
-#     except KeyboardInterrupt:
-#         print("Бот выключен.")

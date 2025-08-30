@@ -9,9 +9,7 @@ from app.handlers.start_dialogue import CHANNEL_ID
 from app.keyboards import get_text_by_id
 from app.messages import dialogue_messages, questions, confirms
 from app.database import get_user_data, save_user_data
-from aiogram.filters import Command
 import app.keyboards as kb
-from app.utils.audio import send_audio_challenge
 from app.utils.form import UserForm
 
 router = Router()
