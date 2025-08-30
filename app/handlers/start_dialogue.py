@@ -16,7 +16,7 @@ from app.filters import KeyFilter
 from app.scheduler import schedule_single_messages
 from app.database import save_user_data
 import app.keyboards as kb
-from app.utils.audio import send_audio_challenge
+from app.utils.context import dp_var
 from app.utils.form import UserForm
 
 router = Router()
@@ -25,6 +25,11 @@ load_dotenv()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, bot: Bot, state: FSMContext) -> None:
+    # current_state = await state.get_state()
+    # if current_state:
+    #     await message.answer("Ты уже начал опрос, пожалуйста, заверши его.")
+    #     return
+    await state.clear()
     user_id = message.from_user.id
     logging.info(f"Получена команда /start от пользователя {user_id} c именем {message.from_user.first_name}")
     # Направление первого сообщения
@@ -120,13 +125,23 @@ async def process_question_changes(message: Message, state: FSMContext) -> None:
                      f"(имя: {user_name}, экранное время: {screen_time}, фокус: {focus}, желаемые изменения: {changes})")
 
         # Планирование уведомлений
-        await schedule_single_messages(message.bot, user_id)
+        await schedule_single_messages(message.bot, user_id, dp_var.get())
 
-
+        await state.clear()  # Очистка состояния после успешного сохранения
     except Exception as e:
         logging.error(f"Ошибка при обработке и сохранении результатов опроса пользователя {message.from_user.id}: {e}")
+        await state.clear()  # Очистка состояния при ошибке
     logging.info(f"Обработаны данные о желаемых изменениях, введенные пользователем {message.from_user.id}")
 
 
-    # Очистка состояния
-    await state.clear()
+# @router.message()
+# async def handle_any_message(message: Message, state: FSMContext) -> None:
+#     current_state = await state.get_state()
+#     if current_state == UserForm.waiting_for_question_name:
+#         await message.answer("Пожалуйста, введите ваше имя.")
+#     elif current_state == UserForm.waiting_for_question_screen_time:
+#         await message.answer("Пожалуйста, выберите время, проведённое за экраном.", reply_markup=kb.get_screen_time_keyboard())
+#     elif current_state == UserForm.waiting_for_question_focus:
+#         await message.answer("Пожалуйста, выберите ваш фокус.", reply_markup=kb.get_focuses_keyboard())
+#     elif current_state == UserForm.waiting_for_question_changes:
+#         await message.answer("Пожалуйста, опишите желаемые изменения.")

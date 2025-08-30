@@ -101,13 +101,13 @@ async def cmd_list_jobs(message: Message) -> None:
         await message.answer("Нет запланированных задач.")
 
 
-@admin_router.message(F.audio)
-async def get_file_id(msg: Message):
-    await msg.answer(f"file_id: {msg.audio.file_id}")
-
-@admin_router.message()
-async def get_file_id(msg: Message):
-    await msg.answer(f"file_id: {msg.message_id}")
+# @admin_router.message(F.audio)
+# async def get_file_id(msg: Message):
+#     await msg.answer(f"file_id: {msg.audio.file_id}")
+#
+# @admin_router.message()
+# async def get_file_id(msg: Message):
+#     await msg.answer(f"file_id: {msg.message_id}")
 
 
 

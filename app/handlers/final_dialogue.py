@@ -30,7 +30,8 @@ async def process_feedback(callback: CallbackQuery, state: FSMContext) -> None:
     except Exception as e:
         logging.error(f'Ошибка редактирования вопроса об отзыве у пользователя {callback.from_user.id}: {e}')
         await callback.message.answer(confirms.get('feedback'))
-
+    finally:
+        await state.clear()
 
 @router.callback_query(KeyFilter(kb.screen_time), UserForm.waiting_for_after_screen_time)
 async def process_after_screen_time(callback: CallbackQuery, state: FSMContext) -> None:
