@@ -34,32 +34,3 @@ async def retry_async(
             logging.info(f"[Retry] Ждём {delay:.2f} сек перед повторной попыткой...")
             await asyncio.sleep(delay)
             delay *= factor
-
-import asyncio
-import logging
-from functools import wraps
-from aiogram.exceptions import TelegramNetworkError
-from aiogram.client.errors import RetryAfter
-from aiohttp import ClientConnectorError
-
-def retry_for_telegram(max_attempts: int = 5, initial_delay: float = 0.5, backoff: float = 2.0):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            delay = initial_delay
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    return await func(*args, **kwargs)
-                except RetryAfter as e:
-                    wait = getattr(e, "timeout", None) or delay
-                    logging.warning(f"{func.__name__}: Получен RetryAfter, ждем {wait:.1f} сек")
-                    await asyncio.sleep(wait)
-                except (TelegramNetworkError, ClientConnectorError, asyncio.TimeoutError) as e:
-                    logging.warning(f"{func.__name__}: Попытка {attempt}/{max_attempts} не удалась: {e}")
-                    if attempt == max_attempts:
-                        logging.error(f"{func.__name__}: Все попытки исчерпаны")
-                        raise
-                    await asyncio.sleep(delay)
-                    delay *= backoff
-        return wrapper
-    return decorator
