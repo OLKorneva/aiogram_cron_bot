@@ -3,7 +3,7 @@
 Обрабатывает команду /start, выбор времени и ответы на четыре вопроса.
 """
 
-from aiogram import Router, Bot, F
+from aiogram import Router, Bot
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -51,29 +51,6 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext) -> None:
     except Exception as e:
         # Логируем ошибку, но не тревожим пользователя
         logging.error(f"Не удалось отправить первое сообщение пользователю {user_id} после ретраев: {e}")
-
-
-# @router.message(CommandStart())
-# async def cmd_start(message: Message, bot: Bot, state: FSMContext) -> None:
-#     # current_state = await state.get_state()
-#     # if current_state:
-#     #     await message.answer("Ты уже начал опрос, пожалуйста, заверши его.")
-#     #     return
-#     await state.clear()
-#     user_id = message.from_user.id
-#     logging.info(f"Получена команда /start от пользователя {user_id} c именем {message.from_user.first_name}")
-#     # Направление первого сообщения
-#     try:
-#         await bot.forward_message(
-#             chat_id=message.from_user.id,
-#             from_chat_id=CHANNEL_ID,
-#             message_id=dialogue_messages.get('start', {}).get('forward_key')
-#         )
-#         await message.answer(text=questions.get('name'))
-#         await state.set_state(UserForm.waiting_for_question_name)
-#         logging.info(f"Пользователю {message.from_user.id} направлено первое сообщение")
-#     except Exception as e:
-#         logging.error(f"Ошибка пересылки пользователю {message.from_user.id} первого сообщения: {e} ")
 
 
 @router.message(UserForm.waiting_for_question_name)

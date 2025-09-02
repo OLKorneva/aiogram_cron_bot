@@ -6,11 +6,9 @@ CHANNEL_ID = getenv("SOURCE_CHAT_ID")
 
 
 dialogue_messages = {
-    'start': {'forward_key': 15},
+    'start': {'forward_key': 5},
     'chose_time': {'forward_key': 16},
     'confirm_time': {'forward_key': 17},
-    'final_questions_start': {'forward_key': 46},
-    'thanks': {'forward_key': 47}
 }
 
 questions = {
@@ -32,74 +30,98 @@ questions = {
 }
 
 confirms = {
-    'name': 'Приятно познакомиться, {}! Меня зовут Фокус. 🐾',
-    'screen_time': 'Хорошо, твое 🕐 экранное время сейчас: <b>{}</b>',
-    'focus': 'Твой фокус сейчас: <b>{}</b>',
-    'save_first_result': '''✨ <b>{}, cовсем скоро мы начнем наш челлендж!</b>  ✨
+    'name': '<em>Приятно познакомиться, {}! Меня зовут Фокус. 🐾</em>',
+    'screen_time': '<em>Хорошо, твое 🕐 экранное время сейчас: <b>{}</b></em>',
+    'focus': '<em>Твой фокус сейчас: <b>{}</b></em>',
+    'save_first_result': '''<em>✨ <b>{}, cовсем скоро мы начнем наш челлендж!</b>  ✨
 
-✅ Я зафиксировал твои ожидания от челленджа. По его окончании проверим, что удалось совместно сделать! 
+✅ Я зафиксировал твои ожидания от челленджа. По его окончании проверим, что удалось совместно сделать! </em>
 
 #вернисвойфокус''',
-    'feedback': 'Спасибо за отзыв!',
-    'after_screen_time': 'До челленджа твое экранное время было: <b>{}</b>, сейчас: <b>{}</b>!',
-    'after_focus': '''До челледжа ты сообщил(а) мне о своем фокусе следующее: <b>{}</b>, сейчас: <b>{}</b>.''',
-    'useful': 'Спасибо! Твое мнение важно для меня! 🐾',
-    'changed': 'Спасибо за твой ответ!🤝',
-    'after_changed': 'До челледжа ты хотел(а) изменить: <b>{}</b>. Подумай, получилось ли достичь своей цели? Рад, если помог тебе!',
-    'save_final_result': '''✨ Спасибо тебе, что эти две недели мы провели вместе. Мне было приятно с тобой общаться и узнавать о тебе новое! 
+    'feedback': '<em>Спасибо за отзыв!</em>',
+    'after_screen_time': '<em>До челленджа твое экранное время было: <b>{}</b>, сейчас: <b>{}</b>!</em>',
+    'after_focus': '''<em>До челледжа ты сообщил(а) мне о своем фокусе следующее: <b>{}</b>, сейчас: <b>{}</b>.</em>''',
+    'useful': '<em>Спасибо! Твое мнение важно для меня! 🐾</em>',
+    'changed': '<em>Спасибо за твой ответ!🤝</em>',
+    'after_changed': '<em>До челледжа ты хотел(а) изменить: <b>{}</b>. Подумай, получилось ли достичь своей цели? Рад, если помог тебе!</em>',
+    'save_final_result': '''<em>✨ Спасибо тебе, что эти две недели мы провели вместе. Мне было приятно с тобой общаться и узнавать о тебе новое! 
 
-Твой бот Фокус 🐾'''
+Твой бот Фокус 🐾</em>'''
 }
 
 
 timetable_single_messages =[
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"24"},
+        "time": {"year":"2025", "month":"09", "day":"05", "hour":"15", "minute":"00"},
         "message_key": "first_meeting_invite",
-        'forward_key': 100
+        'forward_key': 5
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"25"},
+        "time": {"year":"2025", "month":"09", "day":"06", "hour":"11", "minute":"45"},
         "message_key": "first_meeting_1_remind",
-        'forward_key': 102
+        'forward_key': 6
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"25"},
+        "time": {"year":"2025", "month":"09", "day":"06", "hour":"11", "minute":"45"},
         "message_key": "first_meeting_2_remind",
-        'forward_key': 103
+        'forward_key': 7
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"26"},
+        "time": {"year":"2025", "month":"09", "day":"07", "hour":"15", "minute":"00"},
         "message_key": "first_meeting_record",
-        'forward_key': 104
+        'forward_key': 8
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"30"},
+        "time": {"year":"2025", "month":"09", "day":"05", "hour":"10", "minute":"10"},
         "message_key": "content",
-        'forward_key': 105
+        'forward_key': 9
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"27"},
+        "time": {"year":"2025", "month":"09", "day":"12", "hour":"15", "minute":"00"},
         "message_key": "middle_meeting_invite",
-        'forward_key': 106
+        'forward_key': 11
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"28"},
+        "time": {"year":"2025", "month":"09", "day":"13", "hour":"10", "minute":"00"},
+        "message_key": "middle_meeting_1_remind",
+        'forward_key': 12
+    },
+    {
+        "time": {"year":"2025", "month":"09", "day":"13", "hour":"11", "minute":"45"},
+        "message_key": "middle_meeting_2_remind",
+        'forward_key': 13
+    },
+    {
+        "time": {"year":"2025", "month":"09", "day":"14", "hour":"15", "minute":"00"},
         "message_key": "middle_meeting_record",
-        'forward_key': 107
+        'forward_key': 14
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"29"},
+        "time": {"year":"2025", "month":"09", "day":"21", "hour":"10", "minute":"00"},
         "message_key": "final_meeting_invite",
-        'forward_key': 109
+        'forward_key': 18
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"26"},
+        "time": {"year":"2025", "month":"09", "day":"21", "hour":"10", "minute":"00"},
+        "message_key": "final_meeting_1_remind",
+        'forward_key': 19
+    },
+    {
+        "time": {"year":"2025", "month":"09", "day":"21", "hour":"11", "minute":"45"},
+        "message_key": "final_meeting_2_remind",
+        'forward_key': 20
+    },
+    {
+        "time": {"year":"2025", "month":"09", "day":"22", "hour":"15", "minute":"00"},
+        "message_key": "final_record",
+        'forward_key': 21
+    },
+    {
+        "time": {"year":"2025", "month":"09", "day":"12", "hour":"18", "minute":"00"},
         "message_key": "feedback",
     },
     {
-        "time": {"year":"2025", "month":"08", "day":"30", "hour":"22", "minute":"31"},
+        "time": {"year":"2025", "month":"09", "day":"22", "hour":"18", "minute":"00"},
         "message_key": "final",
-        'forward_key': 113
     }
 ]

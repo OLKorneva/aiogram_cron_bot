@@ -2,6 +2,7 @@ from os import getenv
 from io import BytesIO
 import openpyxl
 import logging
+import json
 
 from aiogram.filters import Command, BaseFilter
 from aiogram.types import Message
@@ -64,21 +65,9 @@ async def cmd_get_me(message: Message) -> None:
 
 @admin_router.message(Command("get_all"))
 async def cmd_get_all(message: Message) -> None:
-    user_list = await get_active_users()
-    id_list = [user_id for user_id, _ in user_list]
-    registrated = []
-
-    for user_id in id_list:
-        data = await get_user_data(user_id)
-        if data:
-            try:
-                response = f"Данные пользователя: {data}"
-            except UnicodeEncodeError:
-                response = f"Данные пользователя: {tuple(str(item).encode('utf-8', errors='replace').decode('utf-8') for item in data)}"
-            registrated.append(response)
-
+    registrated = await get_all_users_data()
     if registrated:
-        await message.answer('\n\n'.join(registrated))
+        await message.answer(json.dumps(registrated, indent=4, ensure_ascii=False))
     else:
         await message.answer('В челлендже пока никто не зарегистрирован.')
 

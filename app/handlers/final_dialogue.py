@@ -1,13 +1,12 @@
-from aiogram import Router, Bot
+from aiogram import Router
 
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 import logging
 
 from app.filters import KeyFilter
-from app.handlers.start_dialogue import CHANNEL_ID
 from app.keyboards import get_text_by_id
-from app.messages import dialogue_messages, questions, confirms
+from app.messages import questions, confirms
 from app.database import get_user_data, save_user_data
 import app.keyboards as kb
 from app.utils.form import UserForm
