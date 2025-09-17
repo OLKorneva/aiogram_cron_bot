@@ -6,9 +6,7 @@ CHANNEL_ID = getenv("SOURCE_CHAT_ID")
 
 
 dialogue_messages = {
-    'start': {'forward_key': 5},
-    'chose_time': {'forward_key': 16},
-    'confirm_time': {'forward_key': 17},
+    'start': {'forward_key': 40}
 }
 
 questions = {
@@ -16,7 +14,7 @@ questions = {
     'screen_time': 'Сколько времени ты проводишь у экрана телефона ежедневно?',
     'focus': 'Насколько ты сфокусирован(а) на себе и на важном?',
     'changes': 'Что бы ты хотел изменить?',
-    'feedback': '{}, прошли 7 дней челленджа. Поделись, пожалуйста, своими впечатлениями, насколько тебе нравятся челлендж и задания?',
+    'feedback': '{}, прошли 10 дней челленджа. Поделись, пожалуйста, своими впечатлениями, насколько тебе нравятся челлендж и задания?',
     'final_questions': '''Привет, {}! 
     
 ✨ Помнишь, в начале челленджа я задавал тебе вопросы? Давай вспомним эти вопросы и ответы на них!''',
@@ -57,7 +55,7 @@ timetable_single_messages =[
         'forward_key': 5
     },
     {
-        "time": {"year":"2025", "month":"09", "day":"06", "hour":"11", "minute":"45"},
+        "time": {"year":"2025", "month":"09", "day":"06", "hour":"10", "minute":"00"},
         "message_key": "first_meeting_1_remind",
         'forward_key': 6
     },
@@ -67,7 +65,7 @@ timetable_single_messages =[
         'forward_key': 7
     },
     {
-        "time": {"year":"2025", "month":"09", "day":"07", "hour":"15", "minute":"00"},
+        "time": {"year":"2025", "month":"09", "day":"06", "hour":"19", "minute":"45"},
         "message_key": "first_meeting_record",
         'forward_key': 8
     },
@@ -97,7 +95,7 @@ timetable_single_messages =[
         'forward_key': 14
     },
     {
-        "time": {"year":"2025", "month":"09", "day":"21", "hour":"10", "minute":"00"},
+        "time": {"year":"2025", "month":"09", "day":"20", "hour":"15", "minute":"00"},
         "message_key": "final_meeting_invite",
         'forward_key': 18
     },
@@ -117,7 +115,7 @@ timetable_single_messages =[
         'forward_key': 21
     },
     {
-        "time": {"year":"2025", "month":"09", "day":"12", "hour":"18", "minute":"00"},
+        "time": {"year":"2025", "month":"09", "day":"16", "hour":"12", "minute":"00"},
         "message_key": "feedback",
     },
     {
@@ -125,3 +123,79 @@ timetable_single_messages =[
         "message_key": "final",
     }
 ]
+
+# timetable_single_messages =[
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"00"},
+#         "message_key": "first_meeting_invite",
+#         'forward_key': 5
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"05"},
+#         "message_key": "first_meeting_1_remind",
+#         'forward_key': 6
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"10"},
+#         "message_key": "first_meeting_2_remind",
+#         'forward_key': 7
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"15"},
+#         "message_key": "first_meeting_record",
+#         'forward_key': 8
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"20"},
+#         "message_key": "content",
+#         'forward_key': 9
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"25"},
+#         "message_key": "middle_meeting_invite",
+#         'forward_key': 11
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"35"},
+#         "message_key": "middle_meeting_1_remind",
+#         'forward_key': 12
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"40"},
+#         "message_key": "middle_meeting_2_remind",
+#         'forward_key': 13
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"45"},
+#         "message_key": "middle_meeting_record",
+#         'forward_key': 14
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"50"},
+#         "message_key": "final_meeting_invite",
+#         'forward_key': 18
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"55"},
+#         "message_key": "final_meeting_1_remind",
+#         'forward_key': 19
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"12", "minute":"00"},
+#         "message_key": "final_meeting_2_remind",
+#         'forward_key': 20
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"12", "minute":"05"},
+#         "message_key": "final_record",
+#         'forward_key': 21
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"11", "minute":"30"},
+#         "message_key": "feedback",
+#     },
+#     {
+#         "time": {"year":"2025", "month":"09", "day":"03", "hour":"12", "minute":"10"},
+#         "message_key": "final",
+#     }
+# ]

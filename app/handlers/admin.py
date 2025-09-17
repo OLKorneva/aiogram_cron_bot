@@ -27,7 +27,7 @@ def is_export_allowed(user_id: int) -> bool:
 
 class IsAdmin(BaseFilter):
     async def __call__(self, message: Message) -> bool:
-        return message.from_user.id == ADMIN_ID
+        return message.from_user.id in EXPORT_USER_IDS
 
 
 # ======================
@@ -40,6 +40,47 @@ admin_router.message.filter(IsAdmin())
 # ======================
 # Хендлеры только для админа
 # ======================
+
+@admin_router.message(Command("export"))
+async def export_users_handler(message: Message):
+    if not is_export_allowed(message.from_user.id):
+        await message.answer("У вас нет доступа к экспорту пользователей.")
+        return
+
+    try:
+        # Создаем Excel
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Users"
+
+        # Заголовки столбцов
+        headers = [
+            "user_id", "user_name", "screen_time", "focus", "changes",
+            "feedback", "after_screen_time", "after_focus", "is_useful",
+            "whats_new", "whats_changed", "else_challenge", "topics"
+        ]
+        ws.append(headers)
+
+        # Заполняем строки
+        users_data = await get_all_users_data()
+        for data in users_data:
+            row = [data.get(col) for col in headers]
+            ws.append(row)
+
+        # Сохраняем в BytesIO
+        file_stream = BytesIO()
+        wb.save(file_stream)
+        file_stream.seek(0)
+
+        excel_file = BufferedInputFile(file_stream.read(), filename="users_data.xlsx")
+
+        await message.answer_document(excel_file)
+        logging.info("Файл с пользователями отправлен.")
+
+    except Exception as e:
+        logging.error(f"Ошибка при экспорте пользователей: {e}")
+        await message.answer("Произошла ошибка при экспорте пользователей, повторите команду.")
+
 
 @admin_router.message(Command("middle"))
 async def middle_question(message: Message, bot: Bot, state: FSMContext):
@@ -96,47 +137,6 @@ async def cmd_list_jobs(message: Message) -> None:
         await message.answer(f"Запланированные задачи:\n{job_info}")
     else:
         await message.answer("Нет запланированных задач.")
-
-
-@admin_router.message(Command("export"))
-async def export_users_handler(message: types.Message):
-    if not is_export_allowed(message.from_user.id):
-        await message.answer("У вас нет доступа к экспорту пользователей.")
-        return
-
-    try:
-        # Создаем Excel
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Users"
-
-        # Заголовки столбцов
-        headers = [
-            "user_id", "user_name", "screen_time", "focus", "changes",
-            "feedback", "after_screen_time", "after_focus", "is_useful",
-            "whats_new", "whats_changed", "else_challenge", "topics"
-        ]
-        ws.append(headers)
-
-        # Заполняем строки
-        users_data = await get_all_users_data()
-        for data in users_data:
-            row = [data.get(col) for col in headers]
-            ws.append(row)
-
-        # Сохраняем в BytesIO
-        file_stream = BytesIO()
-        wb.save(file_stream)
-        file_stream.seek(0)
-
-        excel_file = BufferedInputFile(file_stream.read(), filename="users_data.xlsx")
-
-        await message.answer_document(excel_file)
-        logging.info("Файл с пользователями отправлен.")
-
-    except Exception as e:
-        logging.error(f"Ошибка при экспорте пользователей: {e}")
-        await message.answer("Произошла ошибка при экспорте пользователей.")
 
 @admin_router.message(F.text == "/getid")
 async def cmd_getid(message: Message):

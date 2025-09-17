@@ -20,8 +20,8 @@ from app.utils.context import bot_var, dp_var
 from app.utils.storage import SQLiteStorage
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-#logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", filename="bot.log", encoding="utf-8")
+#logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", filename="bot.log", encoding="utf-8")
 logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
 

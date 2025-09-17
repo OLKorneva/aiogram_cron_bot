@@ -135,8 +135,12 @@ async def process_question_else_challenge(callback: CallbackQuery, state: FSMCon
 
     try:
         if callback.data == "else_2":
-            await callback.message.answer(confirms.get('save_final_result'))
-            await state.clear()
+            try:
+                await callback.message.edit_text(confirms.get('save_final_result'), reply_markup=None)
+            except Exception:
+                await callback.message.answer(confirms.get('save_final_result'), reply_markup=None)
+            finally:
+                await state.clear()
         else:
             try:
                 await callback.message.edit_text(questions.get('topics'), reply_markup=None)

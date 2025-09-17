@@ -3,8 +3,8 @@
 Обрабатывает команду /start, выбор времени и ответы на четыре вопроса.
 """
 
-from aiogram import Router, Bot
-from aiogram.filters import CommandStart
+from aiogram import Router, Bot, types
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
@@ -128,9 +128,29 @@ async def process_question_changes(message: Message, state: FSMContext) -> None:
         # Планирование уведомлений
         await add_new_user_to_schedule(message.bot, user_id, dp_var.get())
 
-
-
     except Exception as e:
         logging.error(f"Ошибка при обработке и сохранении результатов опроса пользователя {message.from_user.id}: {e}")
     finally:
         await state.clear()  # Очистка состояния после успешного сохранения
+
+
+@router.message(Command("link"))
+async def export_users_handler(message: types.Message):
+    await message.answer('💫 Перейти в канал челленджа:', reply_markup=kb.link)
+
+@router.message(Command("question"))
+async def export_users_handler(message: types.Message):
+    await message.answer('❓ Задай свой вопрос здесь:', reply_markup=kb.question)
+
+@router.message(Command("help"))
+async def export_users_handler(message: types.Message):
+    help_text = """
+✨ <b>Справка по командам бота</b>
+
+<b>/start</b> - Пройти начальный опрос заново
+<b>/link</b> - Перейти в канал челленджа
+<b>/question</b> - Задать вопрос
+<b>/help</b> - Показать эту справку
+
+"""
+    await message.answer(help_text)

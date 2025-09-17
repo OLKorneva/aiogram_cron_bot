@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import random
 from typing import Callable, Any, Optional, Coroutine, Tuple, Dict, Type
+from aiogram.exceptions import TelegramRetryAfter
 
 async def retry_async(
     func: Callable[..., Coroutine[Any, Any, Any]],
@@ -26,6 +28,10 @@ async def retry_async(
     for attempt in range(1, retries + 1):
         try:
             return await func(*args, **kwargs)
+        except TelegramRetryAfter as e:
+            wait = e.retry_after + random.uniform(0.2, 0.5)
+            logging.warning(f"Flood control: ждём {wait} сек")
+            await asyncio.sleep(wait)
         except exceptions as e:
             logging.warning(f"[Retry] Ошибка при попытке {attempt}: {e}")
             if attempt == retries:

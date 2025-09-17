@@ -1,5 +1,15 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+link = InlineKeyboardBuilder().button(
+    text="Верни свой фокус",
+    url="https://t.me/+dBqWJ0pc5ko3YWQy"
+).as_markup()
+
+question = InlineKeyboardBuilder().button(
+    text="Задай вопрос",
+    url="https://t.me/+eMdq1m6fV5AxYjli"
+).as_markup()
+
 screen_time_options = [
     "менее часа",
     "от часа до двух",
@@ -12,7 +22,7 @@ screen_time_ids = ["1", "2", "3", "4", "5"]
 focus_options = [
     "🚫 Совсем не сфокусирован(а)",
     "⚠️ Скорее не сфокусирован(а)",
-    "🔁 Иногда сфокусирован, иногда нет",
+    "🔁 Иногда сфокусирован(а)",
     "✅ В основном сфокусирован(а)",
     "🎯 Полностью сфокусирован(а)"
 ]
@@ -21,7 +31,7 @@ focus_ids = ["1", "2", "3", "4", "5"]
 changes_options = [
     "🙌 Меньше завишу от телефона",
     "📝 Работаю более сфокусированно",
-    "👨‍👩‍👧‍ Более качественно провожу время с семьей и друзьями",
+    "🏄‍ Качественно отдыхаю",
     "🛏 Не беру телефон в спальню",
     "⭐ Все вышеперечисленное"
 ]

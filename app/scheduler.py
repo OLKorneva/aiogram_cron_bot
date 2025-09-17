@@ -9,6 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from aiogram import Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
 
 from app.database import get_active_users, get_name
 from app.messages import CHANNEL_ID, timetable_single_messages, questions
@@ -18,14 +19,13 @@ from app.utils.retry import retry_async
 
 # --- Настройка scheduler и semaphore ---
 scheduler = AsyncIOScheduler()
-MAX_CONCURRENT_SENDS = 10  # ограничение параллельных сообщений
+MAX_CONCURRENT_SENDS = 4  # ограничение параллельных сообщений
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_SENDS)
-BATCH_DELAY = 1  # секунда между батчами
 
 # --- Безопасная отправка сообщения ---
 async def send_single_message_safe(bot: Bot, user_id: int, date_time: Dict):
     async with semaphore:
-        await asyncio.sleep(random.uniform(0.2, 0.5))  # небольшой рандом
+        await asyncio.sleep(random.uniform(1.5, 2.5))  # небольшой рандом
         message_key = date_time.get("message_key")
         forward_key = date_time.get("forward_key")
 
@@ -44,40 +44,96 @@ async def send_single_message_safe(bot: Bot, user_id: int, date_time: Dict):
                 logging.info(f"Сообщение {message_key} отправлено пользователю {user_id}")
             else:
                 logging.error(f"forward_key в {date_time} не найден, сообщение не отправлено пользователю {user_id}")
+        except TelegramForbiddenError as e:
+            logging.warning(f"⚠️ Доступ запрещён для {user_id}: {e.message}")
+        except TelegramBadRequest as e:
+            logging.warning(f"⚠️ Неверный запрос для {user_id}: {e.message}")
+        except TelegramRetryAfter as e:
+            logging.error(f"⏳ Flood control: надо подождать {e.retry_after} сек")
+            await asyncio.sleep(e.retry_after + 0.5)
+            return await send_single_message_safe(bot, user_id, date_time)  # повторяем
         except Exception as e:
             logging.error(f"Ошибка отправки сообщения {message_key} пользователю {user_id}: {e}")
+        finally:
+            await asyncio.sleep(random.uniform(1.5, 2.5))  # небольшой рандом
 
 # --- FSM-запросы ---
+
+async def safe_send_message(bot: Bot, chat_id: int, **kwargs):
+    async def _send():
+        return await bot.send_message(chat_id=chat_id, **kwargs)
+    return await retry_async(_send)
+
+
 async def run_final_questions(bot: Bot, user_id: int, dp):
     async with semaphore:
-        await asyncio.sleep(random.uniform(0.2, 0.5))
+        await asyncio.sleep(random.uniform(1.5, 2.5))  # небольшой рандом
         try:
             state = FSMContext(
                 storage=dp.storage,
                 key=StorageKey(bot_id=bot.id, chat_id=user_id, user_id=user_id)
             )
             name = await get_name(user_id)
-            await bot.send_message(chat_id=user_id, text=questions.get('final_questions').format(name or ''))
-            await bot.send_message(chat_id=user_id, text=questions.get('after_screen_time'), reply_markup=kb.get_screen_time_keyboard())
+
+            await safe_send_message(
+                bot,
+                user_id,
+                text=questions['final_questions'].format(name or '')
+            )
+            await asyncio.sleep(random.uniform(1.0, 2.0))
+            await safe_send_message(
+                bot,
+                user_id,
+                text=questions['after_screen_time'],
+                reply_markup=kb.get_screen_time_keyboard()
+            )
+
             await state.set_state(UserForm.waiting_for_after_screen_time)
             logging.info(f"Начат финальный опрос пользователя {user_id}")
+        except TelegramForbiddenError as e:
+            logging.warning(f"⚠️ Доступ запрещён для {user_id}: {e.message}")
+        except TelegramBadRequest as e:
+            logging.warning(f"⚠️ Неверный запрос для {user_id}: {e.message}")
+        except TelegramRetryAfter as e:
+            logging.error(f"⏳ Flood control: надо подождать {e.retry_after} сек")
+            await asyncio.sleep(e.retry_after + 0.5)
+            return await run_final_questions(bot, user_id, dp)  # повторяем
         except Exception as e:
             logging.error(f"Ошибка при запуске финальных вопросов для пользователя {user_id}: {e}")
+        finally:
+            await asyncio.sleep(random.uniform(1.5, 2.5))  # небольшой рандом
 
 async def run_middle_question(bot: Bot, user_id: int, dp):
     async with semaphore:
-        await asyncio.sleep(random.uniform(0.2, 0.5))
+        await asyncio.sleep(random.uniform(1.5, 2.5))  # небольшой рандом
         try:
             state = FSMContext(
                 storage=dp.storage,
                 key=StorageKey(bot_id=bot.id, chat_id=user_id, user_id=user_id)
             )
             name = await get_name(user_id)
-            await bot.send_message(chat_id=user_id, text=questions.get('feedback').format(name or ''), reply_markup=kb.get_feedback())
+
+            await safe_send_message(
+                bot,
+                user_id,
+                text=questions['feedback'].format(name or ''),
+                reply_markup=kb.get_feedback()
+            )
+            await asyncio.sleep(random.uniform(1.5, 2.5))  # небольшой рандом
             await state.set_state(UserForm.waiting_for_feedback)
             logging.info(f"Запрошен отзыв у пользователя {user_id}")
+        except TelegramForbiddenError as e:
+            logging.warning(f"⚠️ Доступ запрещён для {user_id}: {e.message}")
+        except TelegramBadRequest as e:
+            logging.warning(f"⚠️ Неверный запрос для {user_id}: {e.message}")
+        except TelegramRetryAfter as e:
+            logging.error(f"⏳ Flood control: надо подождать {e.retry_after} сек")
+            await asyncio.sleep(e.retry_after)
+            return await run_middle_question(bot, user_id, dp)  # повторяем
         except Exception as e:
             logging.error(f"Ошибка запроса отзыва у пользователя {user_id}: {e}")
+        finally:
+            await asyncio.sleep(random.uniform(1.5, 2.5))  # небольшой рандом
 
 # --- Планирование задач для одного пользователя ---
 async def schedule_single_messages(bot: Bot, user_id: int, dp):
@@ -125,18 +181,8 @@ async def restore_scheduled_jobs(bot: Bot, dp):
     for user_id in active_users:
         await schedule_single_messages(bot, user_id, dp)
 
+
 # --- Добавление нового пользователя в рассылку ---
 async def add_new_user_to_schedule(bot: Bot, user_id: int, dp):
     await schedule_single_messages(bot, user_id, dp)
     logging.info(f"Новый пользователь {user_id} добавлен в рассылку")
-
-
-#запретить повторный ввод по нажатию старт (или нет?)
-# ревью ии-шками
-# тесты
-# перенастроить логирование
-
-
-# выбор места размещения
-#финальная настройка (единичное фото в середине)
-# размещение
