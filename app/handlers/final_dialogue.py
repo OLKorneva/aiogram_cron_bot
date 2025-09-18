@@ -7,7 +7,7 @@ import logging
 from app.filters import KeyFilter
 from app.keyboards import get_text_by_id
 from app.messages import questions, confirms
-from app.database import get_user_data, save_user_data
+from app.database import get_user_data, save_user_data, save_additional_answers
 import app.keyboards as kb
 from app.utils.form import UserForm
 
@@ -120,6 +120,44 @@ async def process_question_whats_changed(callback: CallbackQuery, state: FSMCont
     except Exception as e:
         logging.error(f"Ошибка отправки пользователю {callback.from_user.id} напоминания о его целях: {e}")
 
+    await callback.message.answer(text=questions.get('is_need'), reply_markup=kb.get_is_need_keyboard())
+    await state.set_state(UserForm.waiting_for_is_need)
+
+@router.callback_query(KeyFilter(kb.is_need), UserForm.waiting_for_is_need)
+async def process_question_is_need(callback: CallbackQuery, state: FSMContext) -> None:
+    is_need = kb.get_text_by_id(callback.data, kb.is_need_options, kb.is_need_ids)
+    await save_additional_answers(callback.from_user.id, is_need=is_need)
+
+    try:
+        await callback.message.edit_text(confirms.get('is_need'), reply_markup=None)
+    except Exception:
+        await callback.message.answer(confirms.get('is_need'), reply_markup=None)
+
+    await callback.message.answer(text=questions.get('reflection_time'), reply_markup=kb.get_reflection_time_keyboard())
+    await state.set_state(UserForm.waiting_for_reflection_time)
+
+@router.callback_query(KeyFilter(kb.reflection_time), UserForm.waiting_for_reflection_time)
+async def process_question_reflection_time(callback: CallbackQuery, state: FSMContext) -> None:
+    reflection_time = kb.get_text_by_id(callback.data, kb.reflection_time_options, kb.reflection_time_ids)
+    await save_additional_answers(callback.from_user.id, reflection_time=reflection_time)
+
+    try:
+        await callback.message.edit_text(confirms.get('reflection_time').format(reflection_time), reply_markup=None)
+    except Exception:
+        await callback.message.answer(confirms.get('reflection_time').format(reflection_time), reply_markup=None)
+
+    await callback.message.answer(text=questions.get('is_watched'), reply_markup=kb.get_is_watched_keyboard())
+    await state.set_state(UserForm.waiting_for_is_watched)
+
+@router.callback_query(KeyFilter(kb.is_watched), UserForm.waiting_for_is_watched)
+async def process_question_is_watched(callback: CallbackQuery, state: FSMContext) -> None:
+    is_watched = kb.get_text_by_id(callback.data, kb.is_watched_options, kb.is_watched_ids)
+    await save_additional_answers(callback.from_user.id, is_watched=is_watched)
+
+    try:
+        await callback.message.edit_text(confirms.get('is_watched').format(is_watched), reply_markup=None)
+    except Exception:
+        await callback.message.answer(confirms.get('is_watched').format(is_watched), reply_markup=None)
 
     await callback.message.answer(text=questions.get('else_challenge'), reply_markup=kb.get_else_challenge_keyboard())
     await state.set_state(UserForm.waiting_for_else_challenge)

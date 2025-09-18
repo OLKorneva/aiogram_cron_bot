@@ -61,6 +61,26 @@ else_challenge_options = [
 ]
 else_challenge_ids = ["1", "2"]
 
+is_need_options = [
+    "👍 Да!",
+    "👎 Скорее нет"
+]
+is_need_ids = ["1", "2"]
+
+reflection_time_options = [
+    "Будний день после 19",
+    "Суббота 12",
+    "Воскресенье 12",
+    "Суббота после 19",
+    "Воскресенье после 19"
+]
+reflection_time_ids = ["1", "2", "3", "4", "5"]
+
+is_watched_options = [
+    "Да!",
+    "Нет"
+]
+is_watched_ids = ["1", "2"]
 
 def get_screen_time_keyboard():
     builder = InlineKeyboardBuilder()
@@ -104,6 +124,27 @@ def get_feedback():
     builder.adjust(1)
     return builder.as_markup()
 
+def get_is_need_keyboard():
+    builder = InlineKeyboardBuilder()
+    for option, option_id in zip(is_need_options, is_need_ids):
+        builder.button(text=option, callback_data=f"is_need_{option_id}")
+    builder.adjust(2)
+    return builder.as_markup()
+
+def get_reflection_time_keyboard():
+    builder = InlineKeyboardBuilder()
+    for option, option_id in zip(reflection_time_options, reflection_time_ids):
+        builder.button(text=option, callback_data=f"reflection_time_{option_id}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+def get_is_watched_keyboard():
+    builder = InlineKeyboardBuilder()
+    for option, option_id in zip(is_watched_options, is_watched_ids):
+        builder.button(text=option, callback_data=f"is_watched_{option_id}")
+    builder.adjust(2)
+    return builder.as_markup()
+
 # Создаем фильтры для обработки callback_data
 time = ["time_8", "time_10", "time_12", "time_18"]
 screen_time = ["screen_1", "screen_2", "screen_3", "screen_4", "screen_5"]
@@ -112,6 +153,9 @@ changes = ["change_1", "change_2", "change_3", "change_4", "change_5"]
 useful = ["useful_1", "useful_2", "useful_3", "useful_4", "useful_5", "useful_6"]
 else_challenge = ["else_1", "else_2"]
 feedback = ["feedback_1", "feedback_2", "feedback_3"]
+is_need = ["is_need_1", "is_need_2"]
+reflection_time = ["reflection_time_1", "reflection_time_2", "reflection_time_3", "reflection_time_4", "reflection_time_5"]
+is_watched = ["is_watched_1", "is_watched_2"]
 
 def get_text_by_id(data_id, options, ids):
     """Получить текст опции по ID"""

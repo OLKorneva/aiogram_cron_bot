@@ -57,8 +57,8 @@ async def export_users_handler(message: Message):
         headers = [
             "user_id", "user_name", "screen_time", "focus", "changes",
             "feedback", "after_screen_time", "after_focus", "is_useful",
-            "whats_new", "whats_changed", "else_challenge", "topics"
-        ]
+            "whats_new", "whats_changed", "else_challenge", "topics",
+            "is_need", "reflection_time", "is_watched"]
         ws.append(headers)
 
         # Заполняем строки
